@@ -10,6 +10,22 @@
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // CONFIGURACIÓN VITAL DE COLORES PARA QUE LA NAVEGACIÓN NO SE VEA FEA
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#2A241F',
+                            bg1: '#E5D3BD',
+                            bg2: '#D4BCA0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- FIREBASE COMPAT SDK PARA AUTENTICACIÓN -->
@@ -857,7 +873,7 @@
             };
 
             const Topbar = () => (
-                <div className="sticky top-0 z-[100] bg-brand-bg1/95 backdrop-blur-xl px-6 py-4 flex justify-between items-center shadow-sm border-b border-brand-dark/10">
+                <div className="sticky top-0 z-[100] bg-brand-bg1/95 backdrop-blur-xl px-6 py-4 flex justify-between items-center shadow-sm border-b border-brand-dark/10" style={{ backgroundColor: 'rgba(229, 211, 189, 0.95)', borderBottomColor: 'rgba(42, 36, 31, 0.1)' }}>
                     <div className="flex items-center gap-3">
                         <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#2A241F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ElementaLogo />
@@ -928,7 +944,7 @@
             );
 
             const BottomNav = () => (
-                <div className="fixed bottom-0 left-0 w-full bg-brand-dark shadow-[0_-10px_40px_rgba(0,0,0,0.2)] z-[99999] border-t-2 border-brand-bg2 pb-[env(safe-area-inset-bottom)]">
+                <div className="fixed bottom-0 left-0 w-full bg-brand-dark shadow-[0_-10px_40px_rgba(0,0,0,0.2)] z-[99999] border-t-2 border-brand-bg2 pb-[env(safe-area-inset-bottom)]" style={{ backgroundColor: '#2A241F', borderTopColor: '#D4BCA0' }}>
                     <div className="flex justify-between items-center max-w-md mx-auto p-3 px-6">
                         {['home', 'wod', 'academy', 'blog'].map((view) => {
                             const isApp = currentView === view;
