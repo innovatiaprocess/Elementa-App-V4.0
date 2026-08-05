@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Elementa Box App</title>
+    
+    <!-- CARGA DE REACT -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js" crossorigin></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- FIREBASE COMPAT SDK COMPLETOS -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-[#E5D3BD] font-sans text-brand-dark min-h-[100dvh]">
+    
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-0 -left-10 w-72 h-72 bg-[#f4e6d4] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div class="absolute top-40 right-0 w-80 h-80 bg-[#cbb092] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" style="animation-delay: 2s;"></div>
+        <div class="absolute -bottom-20 left-20 w-96 h-96 bg-[#dfc5a6] rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" style="animation-delay: 4s;"></div>
+    </div>
+
+    <div id="root" class="relative z-10 min-h-screen"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = window.React;
+        const { createRoot } = window.ReactDOM;
+
+        // ==========================================
+        // 1. CONFIGURACIÓN DE FIREBASE (Auth + Firestore)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1rEUGu_nBpXrgyro9X3O7ltViyGhRiys",
+            authDomain: "elementabox-app.firebaseapp.com",
+            projectId: "elementabox-app",
+            storageBucket: "elementabox-app.firebasestorage.app",
+            messagingSenderId: "818222784409",
+            appId: "1:818222784409:web:2e2d8ab5562f2ea9b3bd08",
+            measurementId: "G-SL1EMSRVPM"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+        // ==========================================
+        // 2. CONFIGURACIÓN DE IMGBB (Para Evidencias Gratis)
+        // ==========================================
+        const IMGBB_API_KEY = "cee58421a41ae216b6e1812946562b05"; 
+
+        // ==========================================
+        // ICONOS Y ESTILOS GLOBALES
+        // ==========================================
+        const Icons = {
+            ElementaLogo: (p) => <img src="https://lh3.googleusercontent.com/d/1CDtlPBzeohniETytbfVOI43VMmk_vQTn" alt="Elementa Logo" {...p} />,
+            GoogleIcon: (p) => <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" {...p}><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 41.939 C -8.804 40.009 -11.514 38.989 -14.754 38.989 C -19.444 38.989 -23.494 41.689 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/></g></svg>,
+            Settings: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
+            Home: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            Play: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>,
+            BookOpen: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+            Users: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            LogOut: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+            Activity: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+            Video: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>,
+            Search: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+            ChevronDown: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+            ChevronUp: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+            X: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Trophy: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
+            AlertCircle: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+            Clock: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Target: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+            Camera: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
+            Upload: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            Database: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+            ExternalLink: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
+            Dumbbell: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="m14 6.5-4 11"/><path d="M4.5 5v14"/><path d="M19.5 5v14"/><path d="M2 7h3"/><path d="M2 17h3"/><path d="M19 7h3"/><path d="M19 17h3"/></svg>,
+            Calendar: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            CheckCircle: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        };
+        const { ElementaLogo, GoogleIcon, Settings, Home, Play, BookOpen, Users, LogOut, Activity, Video, Search, ChevronDown, ChevronUp, X, Trophy, AlertCircle, Clock, Target, Camera, Upload, Database, ExternalLink, Dumbbell, Calendar, CheckCircle } = Icons;
+
+        const customStyles = `
+        :root { --color-brand-bg1: 229 211 189; --color-brand-bg2: 212 188 160; --color-brand-dark: 42 36 31; }
+        .bg-brand-bg1 { background-color: rgb(var(--color-brand-bg1)); }
+        .bg-brand-dark { background-color: rgb(var(--color-brand-dark)); }
+        .text-brand-bg1 { color: rgb(var(--color-brand-bg1)); }
+        .text-brand-dark { color: rgb(var(--color-brand-dark)); }
+        .border-brand-dark { border-color: rgb(var(--color-brand-dark)); }
+        .glass-card { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 15px 35px -5px rgba(0,0,0,0.15); }
+        .modal-overlay { background: rgba(10, 8, 7, 0.95); backdrop-filter: blur(10px); }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        
+        @keyframes blob { 0% { transform: translate(0px, 0px) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } 100% { transform: translate(0px, 0px) scale(1); } }
+        .animate-blob { animation: blob 10s infinite; }
+        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } } .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes slideUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } } .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes zoomIn { 0% { opacity: 0; transform: scale(0.95) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } } .animate-zoom-in { animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes videogame-pulse {
+            0%, 100% { transform: scale(1.05); box-shadow: 0 0 10px currentColor; }
+            50% { transform: scale(1.15); box-shadow: 0 0 20px currentColor; }
+        }
+        .band-btn { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .videogame-active { animation: videogame-pulse 1.5s infinite; z-index: 10; }
+
+        @keyframes btn-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6); transform: scale(1); }
+            50% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); transform: scale(1); }
+        }
+        .btn-puntos {
+            animation: btn-pulse 2.5s infinite;
+            background: linear-gradient(135deg, #fff, rgb(var(--color-brand-bg1)));
+            border: 2px solid #eab308;
+            color: #854d0e;
+        }
+
+        .bg-band-azul { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .bg-band-verde { background-color: #22c55e; color: white; border-color: #22c55e; }
+        .bg-band-morada { background-color: #9333ea; color: white; border-color: #9333ea; }
+        .bg-band-negra { background-color: #1f2937; color: white; border-color: #1f2937; }
+        .bg-band-roja { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .bg-band-sin { background-color: #eab308; color: white; border-color: #eab308; }
+
+        .border-band-azul { border-color: #3b82f6; color: #3b82f6; box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.2); }
+        .border-band-verde { border-color: #22c55e; color: #22c55e; box-shadow: inset 0 0 8px rgba(34, 197, 94, 0.2); }
+        .border-band-morada { border-color: #9333ea; color: #9333ea; box-shadow: inset 0 0 8px rgba(147, 51, 234, 0.2); }
+        .border-band-negra { border-color: #1f2937; color: #1f2937; box-shadow: inset 0 0 8px rgba(31, 41, 55, 0.2); }
+        .border-band-roja { border-color: #ef4444; color: #ef4444; box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2); }
+        .border-band-sin { border-color: #eab308; color: #eab308; box-shadow: inset 0 0 8px rgba(234, 179, 8, 0.2); }
+
+        @keyframes element-pulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.3) rotate(90deg); opacity: 0.9; }
+        }
+        .orb-aura { position: absolute; width: 100%; height: 100%; border-radius: 40%; filter: blur(35px); z-index: 0; mix-blend-mode: multiply; }
+        .aura-fire { background: #ef4444; animation: element-pulse 4s ease-in-out infinite; top: -10%; left: -10%; }
+        .aura-water { background: #3b82f6; animation: element-pulse 5s ease-in-out infinite alternate; animation-delay: -1s; bottom: -10%; right: -10%; }
+        .aura-earth { background: #22c55e; animation: element-pulse 6s ease-in-out infinite; animation-delay: -2s; bottom: -10%; left: -10%; }
+        .aura-air { background: #cbd5e1; animation: element-pulse 4.5s ease-in-out infinite alternate; animation-delay: -3s; top: -10%; right: -10%; }
+        
+        @keyframes float-logo {
+            0%, 100% { transform: translateY(0); filter: drop-shadow(0 15px 25px rgba(0,0,0,0.3)); }
+            50% { transform: translateY(-15px); filter: drop-shadow(0 30px 40px rgba(0,0,0,0.15)); }
+        }
+        .animate-float { animation: float-logo 4s ease-in-out infinite; }       
+        `;
+
+        const OPCIONES_OBSERVACION = [
+            'Evidencia no corresponde al reto asignado',
+            'No se puede determinar la realización del reto',
+            'Imagen Borrosa / irreconocible',
+            'Aprobado.'
+        ];
+
+        const nivelesGimnasiaList = [
+            { nivel: 'Nivel 1', color: 'verde', label: 'Banda Verde' },
+            { nivel: 'Nivel 2', color: 'morada', label: 'Banda Morada' },
+            { nivel: 'Nivel 3', color: 'negra', label: 'Banda Negra' },
+            { nivel: 'Nivel 4', color: 'roja', label: 'Banda Roja' },
+            { nivel: 'Nivel 5', color: 'sin', label: 'Sin Banda' },
+        ];
+
+        const movimientosGimnasia = [
+            'STRICT PULL UPS', 'KIPPING PULL UPS', 'BUTTERFLY PULL UPS', 
+            'STRICT CHEST TO BAR', 'KIPPING CHEST TO BAR', 'BUTTERFLY CHEST TO BAR', 
+            'STRICT RING MUSCLE UPS', 'STRICT BAR MUSCLE UPS', 'BAR MUSCLE UPS'
+        ];
+
+        const movimientosGimnasiaPlana = [
+            'HAND STAND PUSH UPS', 'DEFICIT HAND STAND PUSH UPS', 'STRICT HAND STAND PUSH UPS',
+            'HANN STAND WALK', 'PIROUETTE HANDSTAND WALK', 'SINGLE UNDERS', 
+            'SINGLE UNDERS CROSSOVER', 'DOUBLE UNDERS', 'DOUBLE UNDERS CROSSOVER'
+        ];
+
+        const familiasLevantamiento = [
+            {
+                nombre: 'SNATCH',
+                movimientos: ['SQUAT SNATCH', 'HANG SQUAT SNATCH', 'HIGH HANG SQUAT SNATCH', 'POWER SNATCH', 'HANG POWER SNATCH', 'HIGH HANG POWER SNATCH']
+            },
+            {
+                nombre: 'JERK',
+                movimientos: ['CLEAN AND JERK', 'SPLIT JERK', 'PUSH JERK', 'PUSH PRESS']
+            },
+            {
+                nombre: 'CLEAN',
+                movimientos: ['SQUAT CLEAN', 'HANG SQUAT CLEAN', 'HIGH HANG SQUAT CLEAN', 'POWER CLEAN', 'HANG POWER CLEAN', 'HIGH HANG POWER CLEAN']
+            }
+        ];
+
+        const gimLevels = ['verde', 'morada', 'negra', 'roja', 'sin'];
+
+        const defaultSkills = {};
+        movimientosGimnasia.forEach(m => defaultSkills[m] = 'verde');
+        movimientosGimnasiaPlana.forEach(m => defaultSkills[m] = false);
+        familiasLevantamiento.forEach(fam => {
+            fam.movimientos.forEach(m => defaultSkills[m] = 0);
+        });
+
+        const getVideoData = (url) => {
+            if (!url) return { type: null, id: null };
+            const safeUrl = String(url);
+            const ytRegex = new RegExp("^.*(youtu\\.be\\/|v\\/|u\\/\\w\\/|embed\\/|watch\\?v=|\\&v=)([^#\\&\\?]*).*");
+            const ytMatch = safeUrl.match(ytRegex);
+            if (ytMatch && ytMatch[2].length === 11) return { type: 'youtube', id: ytMatch[2] };
+            const driveRegex = new RegExp("(?:\\/d\\/|id=)([a-zA-Z0-9_-]+)");
+            const driveMatch = safeUrl.match(driveRegex);
+            if (driveMatch) return { type: 'drive', id: driveMatch[1] };
+            return { type: null, id: null };
+        };
+
+        const formatearFecha = (fechaObj) => {
+            if (!fechaObj) return 'N/A';
+            let date;
+            if (fechaObj.toDate) {
+                date = fechaObj.toDate();
+            } else {
+                date = new Date(fechaObj);
+            }
+            if(isNaN(date.getTime())) return String(fechaObj);
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const y = date.getFullYear();
+            return `${d}/${m}/${y}`;
+        };
+
+        const getBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1024;
+                        let width = img.width; let height = img.height;
+                        if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        resolve(dataUrl.split(',')[1]); 
+                    };
+                };
+                reader.onerror = error => reject(error);
+            });
+        };
+
+        const subirImagenAImgBB = async (base64Data, filename) => {
+            try {
+                const formData = new FormData();
+                formData.append('image', base64Data);
+                formData.append('name', filename);
+
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    return data.data.url;
+                } else {
+                    console.error("Error de ImgBB:", data);
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error subiendo a ImgBB:", error);
+                return null;
+            }
+        };
+
+        const GlobalLoader = () => (
+            <div className="fixed inset-0 z-[999999] bg-[#E5D3BD]/95 backdrop-blur-xl flex flex-col items-center justify-center animate-fade-in" style={{ pointerEvents: 'all' }}>
+                <div className="relative flex items-center justify-center mb-16 w-64 h-64 sm:w-80 sm:h-80">
+                    <div className="absolute inset-0">
+                        <div className="orb-aura aura-fire"></div>
+                        <div className="orb-aura aura-water"></div>
+                        <div className="orb-aura aura-earth"></div>
+                        <div className="orb-aura aura-air"></div>
+                    </div>
+                    <div className="w-48 h-48 sm:w-64 sm:h-64 relative z-10 animate-float rounded-full overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.3)] border-4 border-[#E5D3BD]/50">
+                        <img src="https://lh3.googleusercontent.com/d/1CDtlPBzeohniETytbfVOI43VMmk_vQTn" alt="Elementa Logo" className="w-full h-full object-cover scale-[1.05]" />
+                    </div>
+                </div>
+                
+                <div className="text-brand-dark font-black uppercase tracking-[0.3em] text-sm animate-pulse flex flex-col items-center gap-3">
+                    <span>Sincronizando Elementos</span>
+                    <div className="flex gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-bounce shadow-md" style={{animationDelay: '0s'}}></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce shadow-md" style={{animationDelay: '0.15s'}}></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-bounce shadow-md" style={{animationDelay: '0.3s'}}></div>
+                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300 animate-bounce shadow-md" style={{animationDelay: '0.45s'}}></div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        function App() {
+            const [user, setUser] = useState(null); 
+            const [currentView, setCurrentView] = useState('login'); 
+            const [loading, setLoading] = useState(false);
+            const [dataLoading, setDataLoading] = useState(true); 
+            const [errorMsg, setErrorMsg] = useState('');
+            const [successMsg, setSuccessMsg] = useState('');
+
+            const [videos, setVideos] = useState([]);
+            const [blogPosts, setBlogPosts] = useState([]);
+            const [misPuntos, setMisPuntos] = useState(0);
+            const [retosList, setRetosList] = useState([]);
+            const [rankingList, setRankingList] = useState([]);
+            const [wodsList, setWodsList] = useState([]); 
+            
+            const [searchTerm, setSearchTerm] = useState('');
+            const [expandedCategories, setExpandedCategories] = useState({});
+            const [selectedPost, setSelectedPost] = useState(null); 
+            const [selectedVideo, setSelectedVideo] = useState(null); 
+            const [uploadingReto, setUploadingReto] = useState(null);
+            const [previewFiles, setPreviewFiles] = useState([]);
+            const [showProfileModal, setShowProfileModal] = useState(false);
+
+            const [skillTab, setSkillTab] = useState('gimnasia'); 
+            const [userSkills, setUserSkills] = useState(defaultSkills); 
+            const [maxSkills, setMaxSkills] = useState(defaultSkills);
+            const [pendingSkills, setPendingSkills] = useState({});
+            const [history, setHistory] = useState([]);
+            const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
+
+            const [adminTab, setAdminTab] = useState('evidencias'); 
+            const [adminSheetData, setAdminSheetData] = useState([]);
+            const [adminEvidencias, setAdminEvidencias] = useState([]);
+
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+                    if (firebaseUser) {
+                        const email = firebaseUser.email.toLowerCase();
+                        const userRef = db.collection('usuarios').doc(email);
+                        
+                        userRef.onSnapshot((doc) => {
+                            if (doc.exists) {
+                                const userData = doc.data();
+                                const combinedUser = { email: firebaseUser.email, correo: firebaseUser.email, ...userData };
+                                setUser(combinedUser);
+                                setMisPuntos(userData.puntos || 0);
+                                if (userData.skills) setMaxSkills({...defaultSkills, ...userData.skills});
+                                setCurrentView(prev => prev === 'login' ? 'home' : prev);
+                            } else {
+                                const today = new Date().toISOString().split('T')[0];
+                                userRef.set({
+                                    correo: email,
+                                    nombres: firebaseUser.displayName || '',
+                                    role: 'user', 
+                                    status: 'Activo',
+                                    plan: 'Sin Plan',
+                                    ingreso: today,
+                                    diasRestantes: 0,
+                                    puntos: 0,
+                                    skills: defaultSkills
+                                });
+                            }
+                            setDataLoading(false);
+                            setLoading(false);
+                        });
+
+                        loadRealtimeData(email);
+
+                    } else {
+                        setUser(null);
+                        setCurrentView('login');
+                        setDataLoading(false);
+                        setLoading(false); 
+                    }
+                });
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                if (user && currentView === 'home' && (!user.cedula || !user.telefono)) {
+                    setShowProfileModal(true);
+                }
+            }, [user, currentView]);
+
+            const loadRealtimeData = (email) => {
+                db.collection('wods').orderBy('Fecha', 'desc').onSnapshot(snap => {
+                    setWodsList(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                });
+
+                db.collection('eventos').orderBy('Fecha', 'desc').onSnapshot(snap => {
+                    setBlogPosts(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                });
+                
+                db.collection('videos').onSnapshot(snap => {
+                    setVideos(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                });
+
+                db.collection('retos').onSnapshot(snap => {
+                    setRetosList(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                });
+
+                db.collection('evidencias').where('Correo', '==', email).onSnapshot(snap => {
+                    const evids = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    evids.sort((a,b) => b.Fecha?.toDate() - a.Fecha?.toDate()); 
+                    setHistory(evids);
+
+                    let pendientes = {};
+                    evids.forEach(ev => {
+                        if(ev.Estado === 'Pendiente' && ev.Datos_JSON) {
+                            try { Object.assign(pendientes, JSON.parse(ev.Datos_JSON)); } catch(e){}
+                        }
+                    });
+                    setPendingSkills(pendientes);
+                });
+
+                db.collection('usuarios').doc(email).get().then(doc => {
+                    if (doc.data()?.role === 'admin') {
+                        db.collection('usuarios').onSnapshot(snap => {
+                            setAdminSheetData(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                            const rank = snap.docs.map(d => ({
+                                nombre: `${d.data().nombres} ${d.data().apellidos || ''}`,
+                                puntos: d.data().puntos || 0
+                            })).filter(u => u.nombre.trim() !== '');
+                            setRankingList(rank);
+                        });
+
+                        db.collection('evidencias').where('Estado', '==', 'Pendiente').onSnapshot(snap => {
+                            setAdminEvidencias(snap.docs.map(d => ({id: d.id, ...d.data()})));
+                        });
+                    }
+                });
+            };
+
+            const handleGoogleAuth = async () => {
+                setLoading(true); setErrorMsg('');
+                try {
+                    await auth.signInWithPopup(googleProvider);
+                } catch(err) {
+                    if(err.code !== 'auth/popup-closed-by-user') {
+                        setErrorMsg("Error al conectar: " + err.message);
+                    }
+                    setLoading(false);
+                }
+            };
+
+            const handleLogout = async () => { await auth.signOut(); };
+
+            const handleUpdateProfile = async (e) => {
+                e.preventDefault(); setLoading(true); setErrorMsg(''); setSuccessMsg('');
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                
+                try {
+                    await db.collection('usuarios').doc(user.correo).update({
+                        nombres: data.nombres,
+                        apellidos: data.apellidos,
+                        cedula: data.cedula,
+                        telefono: data.telefono,
+                        eps: data.eps,
+                        fechaNac: data.fechaNac,
+                        contactoEmergencia: data.contactoEmergencia,
+                        parentesco: data.parentesco,
+                        numContactoEmergencia: data.numContactoEmergencia
+                    });
+                    setSuccessMsg("¡Perfil actualizado!");
+                    setTimeout(() => { setShowProfileModal(false); setSuccessMsg(''); }, 1500);
+                } catch (error) {
+                    setErrorMsg("Error: " + error.message);
+                }
+                setLoading(false);
+            };
+
+            const handleFileChange = (e) => {
+                const files = Array.from(e.target.files);
+                if(files.length > 0) { 
+                    const newFiles = files.map((file) => ({
+                        url: URL.createObjectURL(file), type: file.type, originalFile: file
+                    }));
+                    setPreviewFiles((prev) => [...prev, ...newFiles]); 
+                } 
+            };
+
+            const handleEvidenceSubmit = async (e) => {
+                e.preventDefault(); setLoading(true); setSuccessMsg('Procesando (esto puede tardar si hay fotos)...'); setErrorMsg('');
+                
+                try {
+                    let urlEvidencia = "Sin archivo";
+                    
+                    if (previewFiles.length > 0) {
+                        const pf = previewFiles[0]; 
+                        if(pf.originalFile.size > 8 * 1024 * 1024) { 
+                            setErrorMsg("Imagen muy pesada (Máximo 8MB)."); setLoading(false); return; 
+                        }
+                        const b64 = await getBase64(pf.originalFile);
+                        const imgUrl = await subirImagenAImgBB(b64, pf.originalFile.name || 'evidencia');
+                        
+                        if (imgUrl) {
+                            urlEvidencia = imgUrl;
+                        } else {
+                            setErrorMsg("No se pudo subir la imagen a ImgBB. Intenta de nuevo."); 
+                            setLoading(false); return;
+                        }
+                    }
+
+                    await db.collection('evidencias').add({
+                        Correo: user.correo,
+                        Atleta: `${user.nombres} ${user.apellidos || ''}`,
+                        Reto: uploadingReto.Titulo,
+                        Puntos: uploadingReto.Puntos,
+                        URL_Evidencia: urlEvidencia,
+                        Fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                        Estado: 'Pendiente',
+                        Observacion: ''
+                    });
+
+                    setSuccessMsg('Evidencia enviada a revisión.');
+                    setTimeout(() => { setUploadingReto(null); setPreviewFiles([]); setSuccessMsg(''); }, 2000);
+                    
+                } catch(e) { 
+                    setErrorMsg("Error: " + e.message); 
+                }
+                setLoading(false);
+            };
+
+            const handleAdminValidateEvidence = async (evidencia, estado, puntosGanados) => {
+                try {
+                    await db.collection('evidencias').doc(evidencia.id).update({
+                        Estado: estado,
+                        Puntos: estado === 'Aprobado' ? puntosGanados : 0
+                    });
+
+                    if (estado === 'Aprobado') {
+                        const userRef = db.collection('usuarios').doc(evidencia.Correo);
+                        await userRef.update({
+                            puntos: firebase.firestore.FieldValue.increment(puntosGanados)
+                        });
+                    }
+                    alert(`Evidencia ${estado}`);
+                } catch(e) {
+                    alert("Error al evaluar: " + e.message);
+                }
+            };
+
+            const handleNavigation = (view) => { setCurrentView(view); window.scrollTo(0, 0); };
+
+            const groupedFilteredVideos = useMemo(() => {
+                const lowerSearch = String(searchTerm || '').toLowerCase();
+                const filtered = videos?.filter((v) => String(v.Nombre || '').toLowerCase().includes(lowerSearch) || String(v.Descripcion || '').toLowerCase().includes(lowerSearch)) || [];
+                return filtered.reduce((acc, v) => {
+                    const cat = v.Categoria || 'General';
+                    if (!acc[cat]) acc[cat] = []; acc[cat].push(v); return acc;
+                }, {});
+            }, [videos, searchTerm]);
+
+            const toggleCategory = (cat) => setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+
+            const Topbar = () => (
+                <div className="sticky top-0 z-[100] bg-brand-bg1/95 backdrop-blur-xl px-6 py-4 flex justify-between items-center shadow-sm border-b border-brand-dark/10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full shadow-md overflow-hidden border border-brand-dark/10 shrink-0 bg-brand-dark flex items-center justify-center">
+                            <ElementaLogo className="w-full h-full object-cover scale-[1.10]" />
+                        </div>
+                        <span className="font-black text-xl tracking-widest uppercase text-brand-dark">Elementa</span>
+                    </div>
+                    {user && (
+                        <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-black/5 transition-colors text-brand-dark/80 font-bold text-xs uppercase tracking-wider">
+                            Salir <LogOut className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+            );
+
+            const ProfileSuperCard = () => (
+                <div className="sticky top-[76px] z-[90] glass-card rounded-[2rem] p-3.5 flex flex-col gap-3.5 border border-white/60 shadow-lg mb-4 transition-all">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-10 h-10 bg-brand-dark text-brand-bg1 rounded-full flex items-center justify-center font-black text-xl shadow-md ring-2 ring-brand-bg1/50 uppercase">
+                                {String(user.nombres || user.correo || 'E').charAt(0)}
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h2 className="text-sm font-black uppercase leading-none text-brand-dark tracking-tight">
+                                        {user.nombres ? `${user.nombres} ${user.apellidos || ''}` : 'Atleta Elementa'}
+                                    </h2>
+                                    <button onClick={() => setShowProfileModal(true)} className="text-brand-dark/60 hover:text-brand-dark bg-white/60 hover:bg-white p-1 rounded-full transition-colors shadow-sm border border-brand-dark/10 relative">
+                                        <Settings className="w-3.5 h-3.5" />
+                                        {(!user.cedula || !user.eps) && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border border-[#f4e6d4]"></span>}
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-[8px] bg-black/5 px-1.5 py-0.5 rounded font-black uppercase text-brand-dark/60">{user.plan || 'Sin Plan'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="btn-puntos px-4 py-1.5 rounded-[1rem] flex flex-col items-center shadow-md shrink-0">
+                            <span className="font-black text-xl leading-none">{misPuntos}</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest mt-0.5 opacity-90 flex items-center gap-0.5"><Trophy className="w-2.5 h-2.5"/> Puntos</span>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const BottomNav = () => (
+                <div className="fixed bottom-0 left-0 w-full bg-brand-dark backdrop-blur-lg shadow-[0_-10px_40px_rgba(0,0,0,0.2)] z-[99999] border-t-2 border-brand-bg2 pb-[env(safe-area-inset-bottom)]">
+                    <div className="flex justify-between items-center max-w-md mx-auto p-3 px-6">
+                        {['home', 'wod', 'academy', 'blog'].map((view) => {
+                            const isApp = currentView === view;
+                            const icons = { home: Home, wod: Calendar, academy: Video, blog: BookOpen };
+                            const labels = { home: 'Home', wod: 'WOD', academy: 'Videos', blog: 'Eventos' };
+                            const Icon = icons[view];
+                            return (
+                                <button key={view} onClick={() => handleNavigation(view)} className={`relative flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isApp ? 'text-brand-bg1 scale-110' : 'text-white/50 hover:text-white/80'}`}>
+                                    <Icon className="w-6 h-6" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{labels[view]}</span>
+                                </button>
+                            );
+                        })}
+                        {user?.role === 'admin' && (
+                            <button onClick={() => handleNavigation('admin')} className={`relative flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${currentView === 'admin' ? 'text-brand-bg1 scale-110' : 'text-white/50 hover:text-white/80'}`}>
+                                <Database className="w-6 h-6" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">Admin</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="pb-32 min-h-screen">
+                    <style dangerouslySetInnerHTML={{ __html: customStyles }} />
+
+                    {dataLoading && <GlobalLoader />}
+
+                    {(user || currentView !== 'login') && <Topbar />}
+
+                    <div className="max-w-4xl mx-auto px-4 pt-6">
+                        
+                        {user && currentView !== 'login' && <ProfileSuperCard />}
+
+                        {/* VISTA: LOGIN */}
+                        {!user && currentView === 'login' && (
+                            <div className="flex flex-col items-center justify-center animate-slide-up py-10">
+                                <div className="mb-10 flex flex-col items-center w-full">
+                                    <div className="w-40 h-40 relative flex items-center justify-center animate-float">
+                                        <div className="relative z-10 w-full h-full rounded-full overflow-hidden shadow-2xl border-[6px] border-[#E5D3BD]">
+                                            <ElementaLogo className="w-full h-full object-cover scale-[1.05]" />
+                                        </div>
+                                    </div>
+                                    <h1 className="text-5xl font-black uppercase tracking-[0.2em] text-brand-dark drop-shadow-md text-center mt-6">Elementa</h1>
+                                </div>
+                                
+                                <div className="glass-card p-6 sm:p-8 rounded-[2.5rem] w-full max-w-md border border-white/50 text-center">
+                                    <h3 className="text-2xl font-black mb-2 text-center">Bienvenido Atleta</h3>
+                                    <p className="text-xs font-bold text-center text-brand-dark/50 mb-8 px-4">
+                                        Ingresa con tu cuenta de Google. Sin contraseñas que recordar.
+                                    </p>
+                                    
+                                    {errorMsg && <div className="bg-red-500/10 text-red-700 p-3 rounded-xl mb-6 text-sm font-bold text-center border border-red-500/20">{errorMsg}</div>}
+
+                                    <button type="button" onClick={handleGoogleAuth} disabled={loading} className="w-full bg-white border border-brand-dark/10 text-brand-dark p-4 rounded-xl font-black flex items-center justify-center gap-3 hover:bg-gray-50 shadow-md hover:scale-[1.02] transition-all">
+                                        <GoogleIcon /> {loading ? 'Conectando...' : 'Continuar con Google'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VISTA: HOME (SKILLS Y LOGROS) */}
+                        {user && currentView === 'home' && (
+                            <div className="animate-slide-up space-y-4">
+                                <div className="flex gap-2 overflow-x-auto hide-scroll pb-2 mt-4">
+                                    <button onClick={() => setSkillTab('gimnasia')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[11px] sm:text-sm transition-all shadow-sm whitespace-nowrap px-2 ${skillTab === 'gimnasia' ? 'bg-brand-dark text-brand-bg1' : 'bg-white/50 text-brand-dark hover:bg-white border border-brand-dark/5'}`}>Gimnasia</button>
+                                    <button onClick={() => setSkillTab('levantamientos')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[11px] sm:text-sm transition-all shadow-sm whitespace-nowrap px-2 ${skillTab === 'levantamientos' ? 'bg-brand-dark text-brand-bg1' : 'bg-white/50 text-brand-dark hover:bg-white border border-brand-dark/5'}`}>Levantamientos</button>
+                                </div>
+
+                                <div className="glass-card rounded-[1.5rem] p-4 sm:p-6 border border-white/40 shadow-sm mt-2 mb-6">
+                                    {skillTab === 'gimnasia' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <h3 className="font-black text-xl uppercase tracking-wider text-brand-dark mb-4">Gimnasia (Bandas)</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                                {movimientosGimnasia.map((mov, idx) => (
+                                                    <div key={idx} className="bg-white/60 p-3.5 sm:p-4 rounded-2xl border border-brand-dark/10 shadow-sm flex flex-col gap-3">
+                                                        <h4 className="font-black text-xs text-brand-dark uppercase tracking-wider">{mov}</h4>
+                                                        <div className="flex items-center justify-between bg-black/5 p-2 rounded-full border border-black/5 mt-1 relative">
+                                                            {nivelesGimnasiaList.map((nv) => {
+                                                                const isActive = userSkills[mov] === nv.color;
+                                                                let btnClass = "w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-300 relative flex items-center justify-center ";
+                                                                if (isActive) {
+                                                                    btnClass += `bg-transparent border-band-${nv.color} border-[3px] border-dashed scale-110 videogame-active z-10`;
+                                                                } else {
+                                                                    btnClass += `bg-black/10 border-2 border-transparent opacity-40 hover:opacity-100 grayscale hover:grayscale-0 hover:scale-110`;
+                                                                }
+                                                                return (
+                                                                    <button key={nv.color} className={btnClass} title={`${nv.nivel}: ${nv.label}`}>
+                                                                        {isActive && <CheckCircle className={`w-4 h-4 drop-shadow-md z-20 absolute text-${nv.color}-600`}/>}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {skillTab === 'levantamientos' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <h3 className="font-black text-xl uppercase tracking-wider text-brand-dark mb-4">Levantamientos</h3>
+                                            {familiasLevantamiento.map((familia, fIdx) => (
+                                                <div key={fIdx} className="mb-6 last:mb-0">
+                                                    <h4 className="font-black text-brand-dark uppercase border-b-2 border-brand-dark/10 pb-1 mb-3 text-sm">{familia.nombre}</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                                        {familia.movimientos.map((mov, idx) => (
+                                                            <div key={idx} className="bg-white/60 p-4 rounded-2xl border border-brand-dark/10 flex items-center justify-between gap-3 shadow-sm hover:bg-white/80 transition-colors">
+                                                                <h4 className="font-black text-xs text-brand-dark uppercase tracking-wider leading-tight">{mov}</h4>
+                                                                <div className="flex items-center gap-1 w-24 sm:w-28 bg-white p-1 rounded-xl border border-brand-dark/20 shadow-inner">
+                                                                    <input type="number" readOnly value={maxSkills[mov] || 0} className="w-full p-2 bg-transparent outline-none font-black text-center text-brand-dark text-lg sm:text-xl" />
+                                                                    <span className="text-[8px] font-black uppercase text-brand-dark/50 pr-2">LBS</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VISTA: WOD Y RETOS */}
+                        {user && currentView === 'wod' && (
+                            <div className="animate-slide-up space-y-6">
+                                <div className="px-2 mt-4">
+                                    <h2 className="text-4xl font-black uppercase leading-none mt-1">WOD</h2>
+                                    <p className="text-sm font-bold text-brand-dark/50 mt-2">Entrenamientos y Retos</p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {wodsList.map((wod, idx) => (
+                                        <div key={idx} className="glass-card rounded-[1.5rem] p-6 border border-brand-dark/10 shadow-md relative overflow-hidden group">
+                                            <div className="absolute top-0 left-0 w-2 h-full bg-brand-dark"></div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <h3 className="text-2xl font-black uppercase text-brand-dark">{wod.Titulo || 'WOD'}</h3>
+                                                <span className="text-xs font-bold text-brand-dark/50 bg-white/50 px-3 py-1 rounded-full">{formatearFecha(wod.Fecha)}</span>
+                                            </div>
+                                            <div className="bg-white/40 p-5 rounded-xl font-medium text-brand-dark/90 whitespace-pre-wrap leading-relaxed border border-white/50 text-sm">
+                                                {wod.Descripcion || 'Sin descripción'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="pt-4 border-t-2 border-brand-dark/10">
+                                    <h3 className="font-black text-xl uppercase mb-4 px-2 flex items-center gap-2"><Trophy className="w-5 h-5"/> Retos Disponibles</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {retosList.map((reto, idx) => (
+                                            <div key={idx} className="bg-white/60 p-5 rounded-2xl border border-brand-dark/5 flex flex-col h-full shadow-sm">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h4 className="font-black uppercase text-sm leading-tight text-brand-dark pr-2">{reto.Titulo}</h4>
+                                                    <span className="bg-green-100 text-green-700 font-black text-[10px] px-2 py-1 rounded-full uppercase tracking-wider border border-green-200 shrink-0">+{reto.Puntos} Pts</span>
+                                                </div>
+                                                <p className="text-xs font-bold text-brand-dark/60 mb-4 flex-1 leading-relaxed">{reto.Descripcion}</p>
+                                                <button onClick={() => setUploadingReto({ Titulo: reto.Titulo, Puntos: reto.Puntos })} className="w-full bg-brand-dark text-brand-bg1 py-2.5 rounded-xl font-black text-[10px] uppercase shadow-md flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform">
+                                                    <Upload className="w-4 h-4"/> Subir Evidencia
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VISTA: ACADEMIA DE VIDEOS */}
+                        {user && currentView === 'academy' && (
+                            <div className="animate-slide-up space-y-6">
+                                <div className="px-2 mt-4">
+                                    <h2 className="text-4xl font-black uppercase leading-none mt-1">Academia</h2>
+                                    <p className="text-sm font-bold text-brand-dark/50 mt-2">Domina tu técnica con nuestros videos</p>
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-dark/50" />
+                                    <input type="text" placeholder="Buscar movimiento..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/60 focus:bg-white outline-none transition-all shadow-inner font-bold text-brand-dark" />
+                                </div>
+                                <div className="space-y-4">
+                                    {Object.keys(groupedFilteredVideos).map((category, catIdx) => (
+                                        <div key={catIdx} className="glass-card rounded-[1.5rem] overflow-hidden border border-white/40 shadow-sm">
+                                            <button onClick={() => toggleCategory(category)} className="w-full p-5 flex justify-between items-center hover:bg-white/40 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-brand-dark text-brand-bg1 w-8 h-8 rounded-full flex items-center justify-center font-black text-sm shadow-inner">{groupedFilteredVideos[category].length}</div>
+                                                    <h3 className="font-black text-lg uppercase tracking-wider">Categoría {category}</h3>
+                                                </div>
+                                                {expandedCategories[category] ? <ChevronUp className="w-5 h-5 opacity-50"/> : <ChevronDown className="w-5 h-5 opacity-50"/>}
+                                            </button>
+                                            {expandedCategories[category] && (
+                                                <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-black/5 animate-fade-in border-t border-white/20">
+                                                    {groupedFilteredVideos[category].map((vid, vIdx) => {
+                                                        const videoInfo = getVideoData(vid.URL);
+                                                        return (
+                                                            <div key={vIdx} onClick={() => setSelectedVideo({ ...videoInfo, Nombre: vid.Nombre })} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-brand-dark/5 flex flex-col group relative cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                                                                <div className="relative aspect-video bg-brand-dark flex items-center justify-center overflow-hidden">
+                                                                    {videoInfo.type === 'youtube' ? (
+                                                                        <img src={`https://img.youtube.com/vi/${videoInfo.id}/hqdefault.jpg`} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105" alt={vid.Nombre} />
+                                                                    ) : (
+                                                                        <Video className="w-12 h-12 text-white/30" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="p-5 flex-1 flex flex-col">
+                                                                    <h4 className="font-black text-xl leading-tight uppercase mb-2 text-brand-dark">{vid.Nombre}</h4>
+                                                                    <p className="text-sm text-brand-dark/70 font-medium line-clamp-2 mt-auto">{vid.Descripcion}</p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VISTA: BLOG / EVENTOS */}
+                        {user && currentView === 'blog' && (
+                            <div className="animate-slide-up space-y-6">
+                                <div className="px-2 mt-4">
+                                    <h2 className="text-4xl font-black uppercase leading-none mt-1">Eventos</h2>
+                                    <p className="text-sm font-bold text-brand-dark/50 mt-2">Actividades extraordinarias y comunidad</p>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                    {blogPosts.map((post, idx) => (
+                                        <div key={idx} onClick={() => setSelectedPost(post)} className="bg-white rounded-2xl overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer flex flex-col border border-brand-dark/10 shadow-sm">
+                                            <div className="h-32 sm:h-40 w-full bg-brand-dark/5 flex items-center justify-center">
+                                                <BookOpen className="w-8 h-8 text-brand-dark/20" />
+                                            </div>
+                                            <div className="p-4 flex-1 flex flex-col">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="bg-brand-dark text-brand-bg1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">Evento</span>
+                                                    <span className="text-[9px] font-bold text-brand-dark/50 uppercase">{formatearFecha(post.Fecha)}</span>
+                                                </div>
+                                                <h3 className="text-sm font-black leading-tight mb-1.5 text-brand-dark">{post.Titulo}</h3>
+                                                <p className="font-medium text-brand-dark/60 text-[10px] mb-3 line-clamp-2 leading-relaxed">{post.Descripcion}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VISTA: ADMIN PANEL */}
+                        {user && currentView === 'admin' && user?.role === 'admin' && (
+                            <div className="animate-slide-up space-y-6">
+                                <div className="px-2 mt-4"><h2 className="text-4xl font-black uppercase leading-none mt-1">Panel Admin</h2></div>
+                                
+                                <div className="glass-card p-4 sm:p-6 rounded-[2rem] border border-white/40">
+                                    <h3 className="text-xl font-black flex items-center gap-2 mb-6"><CheckCircle className="w-5 h-5"/> Evidencias Pendientes</h3>
+                                    
+                                    <div className="space-y-3">
+                                        {adminEvidencias.length === 0 ? (
+                                            <p className="text-center font-bold text-brand-dark/50 py-8 bg-white/40 rounded-2xl border border-white">No hay evidencias pendientes por revisar.</p>
+                                        ) : (
+                                            adminEvidencias.map((ev, i) => (
+                                                <div key={i} className="bg-white/60 p-4 rounded-2xl border border-brand-dark/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                                                    <div className="flex-1 min-w-0 pr-4">
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700">Pendiente</span>
+                                                            <span className="text-[10px] font-black uppercase text-brand-dark/50">{formatearFecha(ev.Fecha)}</span>
+                                                        </div>
+                                                        <p className="font-black text-brand-dark text-xs leading-tight uppercase">{ev.Reto}</p>
+                                                        <p className="text-[10px] font-bold text-brand-dark/60 mt-1 flex items-center gap-1"><Users className="w-3 h-3"/> {ev.Atleta} ({ev.Correo})</p>
+                                                        
+                                                        {ev.URL_Evidencia && ev.URL_Evidencia !== 'Sin archivo' && (
+                                                            <a href={ev.URL_Evidencia} target="_blank" className="inline-block mt-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-black text-[10px] uppercase border border-blue-200">
+                                                                Ver Imagen Adjunta
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                                        <button onClick={() => handleAdminValidateEvidence(ev, 'Aprobado', ev.Puntos)} className="w-full bg-green-500 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-green-600">Aprobar (+{ev.Puntos})</button>
+                                                        <button onClick={() => handleAdminValidateEvidence(ev, 'Rechazado', 0)} className="w-full bg-red-100 text-red-700 px-4 py-2 rounded-xl font-black text-[10px] uppercase border border-red-200 hover:bg-red-200">Rechazar</button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODALES ADICIONALES (PERFIL Y UPLOAD) */}
+                        {showProfileModal && (
+                            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 modal-overlay animate-fade-in">
+                                <div className="bg-[#f0e3d1] w-full max-w-lg rounded-[2.5rem] p-6 shadow-2xl relative animate-zoom-in border border-white/20 max-h-[90vh] flex flex-col">
+                                    <button type="button" onClick={() => setShowProfileModal(false)} className="absolute top-4 right-4 z-10 bg-brand-dark/10 text-brand-dark p-2 rounded-full hover:bg-brand-dark/20"><X className="w-4 h-4" /></button>
+                                    <div className="mb-4 text-center">
+                                        <h3 className="text-2xl font-black uppercase text-brand-dark">Mi Perfil</h3>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto hide-scroll pr-1 pb-4">
+                                        <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><label className="block text-[10px] font-black mb-1 ml-1 uppercase text-brand-dark">Nombres</label><input type="text" name="nombres" defaultValue={user.nombres} className="w-full p-3.5 rounded-xl bg-white/60 focus:bg-white outline-none font-bold text-brand-dark" /></div>
+                                                <div><label className="block text-[10px] font-black mb-1 ml-1 uppercase text-brand-dark">Apellidos</label><input type="text" name="apellidos" defaultValue={user.apellidos} className="w-full p-3.5 rounded-xl bg-white/60 focus:bg-white outline-none font-bold text-brand-dark" /></div>
+                                            </div>
+                                            <button type="submit" className="w-full bg-brand-dark text-brand-bg1 p-4 rounded-xl font-black text-sm uppercase tracking-wider mt-4">Guardar Perfil</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {uploadingReto && (
+                            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 modal-overlay animate-fade-in">
+                                <div className="bg-[#f0e3d1] w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative animate-zoom-in border border-white/20">
+                                    <button type="button" onClick={() => {setUploadingReto(null); setPreviewFiles([]);}} className="absolute top-4 right-4 z-10 bg-brand-dark/10 text-brand-dark p-2 rounded-full hover:bg-brand-dark/20"><X className="w-4 h-4" /></button>
+                                    <h3 className="text-xl font-black uppercase mb-2 text-center text-brand-dark pr-6">Enviar Evidencia</h3>
+                                    <p className="text-xs font-bold text-brand-dark/60 mb-6 text-center leading-tight uppercase">{uploadingReto.Titulo}</p>
+                                    
+                                    <form onSubmit={handleEvidenceSubmit} className="space-y-4">
+                                        {previewFiles.length > 0 ? (
+                                            <div className="w-full flex flex-col items-center gap-3">
+                                                <div className="w-32 h-32 relative rounded-xl overflow-hidden shrink-0 bg-black shadow-sm mx-auto">
+                                                    <img src={previewFiles[0].url} className="w-full h-full object-cover" />
+                                                </div>
+                                                <button type="button" onClick={() => setPreviewFiles([])} className="bg-black/10 text-brand-dark/60 font-black text-[10px] uppercase px-3 py-1.5 rounded-lg">Cambiar Foto</button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-3 w-full">
+                                                <button type="button" onClick={() => document.getElementById('cameraInput').click()} className="flex-1 h-32 rounded-2xl bg-white/60 border-2 border-brand-dark/20 flex flex-col items-center justify-center gap-2 font-black text-brand-dark shadow-sm">
+                                                    <Camera className="w-8 h-8 opacity-70" />
+                                                    <span className="text-[10px] uppercase">Tomar Foto</span>
+                                                </button>
+                                                <input type="file" id="cameraInput" accept="image/*" onChange={handleFileChange} className="hidden" />
+                                            </div>
+                                        )}
+                                        <button type="submit" disabled={loading || previewFiles.length === 0} className="w-full bg-brand-dark text-brand-bg1 p-4 rounded-xl font-black uppercase disabled:opacity-50 mt-4">{loading ? 'Procesando...' : 'Enviar a Revisión'}</button>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedVideo && (
+                            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={() => setSelectedVideo(null)}>
+                                <div className="bg-black w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative aspect-video flex flex-col" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => setSelectedVideo(null)} className="absolute top-4 right-4 z-30 bg-black/50 text-white p-2 rounded-full hover:bg-black transition-colors"><X className="w-5 h-5" /></button>
+                                    <div className="flex-1 w-full h-full relative">
+                                        {selectedVideo.type === 'youtube' && <iframe src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1`} className="absolute inset-0 w-full h-full border-0" allow="autoplay; fullscreen"></iframe>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedPost && (
+                            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={() => setSelectedPost(null)}>
+                                <div className="bg-[#f0e3d1] w-full max-w-lg rounded-[2.5rem] p-6 shadow-2xl relative animate-zoom-in" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 bg-brand-dark/10 p-2 rounded-full"><X className="w-5 h-5" /></button>
+                                    <h2 className="text-2xl font-black text-brand-dark mb-4 mt-2 pr-6">{selectedPost.Titulo}</h2>
+                                    <div className="text-brand-dark/90 font-medium whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
+                                        {selectedPost.Descripcion}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                    {user && currentView !== 'login' && <BottomNav />}
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
